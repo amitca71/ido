@@ -1,81 +1,59 @@
 import streamlit as st
+import random
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 
-# הגדרת תצורה בסיסית לעמוד
-st.set_page_config(page_title="איקס עיגול", page_icon="🎮")
+# טעינת מודל אמבדינג (תומך בעברית)
+@st.cache_resource
+def load_model():
+    return SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
 
-st.title("משחק איקס עיגול ❌⭕")
+model = load_model()
 
-# 1. אתחול משתני מצב המערכת (Session State)
-if "board" not in st.session_state:
-    st.session_state.board = [" "] * 9
-if "current_player" not in st.session_state:
-    st.session_state.current_player = "X"
-if "winner" not in st.session_state:
-    st.session_state.winner = None
+# רשימת מילים אפשריות
+WORDS = [
+    "כלב", "חתול", "מחשב", "בית", "עץ",
+    "ים", "אהבה", "חבר", "ספר", "מכונית",
+    "שמש", "ירח", "מלך", "ילד", "אוכל"
+]
 
-# 2. פונקציה לבדיקת ניצחון
-def check_winner(board):
-    win_conditions = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8],  # שורות
-        [0, 3, 6], [1, 4, 7], [2, 5, 8],  # עמודות
-        [0, 4, 8], [2, 4, 6]              # אלכסונים
-    ]
-    for c in win_conditions:
-        if board[c[0]] == board[c[1]] == board[c[2]] and board[c[0]] != " ":
-            return board[c[0]]
-    
-    if " " not in board:
-        return "Tie" # תיקו
-        
-    return None
+# התחלת משחק חדש
+def new_game():
+    st.session_state.secret_word = random.choice(WORDS)
+    st.session_state.guesses = []
 
-# 3. פונקציה לטיפול בלחיצה על משבצת (Callback)
-def handle_click(index):
-    # הפעולה תתבצע רק אם המשבצת ריקה ואין עדיין מנצח
-    if st.session_state.board[index] == " " and st.session_state.winner is None:
-        st.session_state.board[index] = st.session_state.current_player
-        
-        # בדיקת מנצח אחרי המהלך
-        st.session_state.winner = check_winner(st.session_state.board)
-        
-        # החלפת תור (רק אם המשחק ממשיך)
-        if st.session_state.winner is None:
-            st.session_state.current_player = "O" if st.session_state.current_player == "X" else "X"
+if "secret_word" not in st.session_state:
+    new_game()
 
-# --- יצירת לוח המשחק (Grid 3x3) ---
-st.write("") # מרווח קל
-for row in range(3):
-    cols = st.columns(3)
-    for col in range(3):
-        idx = row * 3 + col
-        
-        # הגדרת התווית של הכפתור. 
-        # השתמשתי בתו בלתי נראה "‎" למקרה שהמשבצת ריקה כדי למנוע אזהרות בסטרימליט.
-        label = st.session_state.board[idx]
-        if label == " ":
-            label = "‎" 
-            
-        with cols[col]:
-            st.button(
-                label,
-                key=f"btn_{idx}",
-                on_click=handle_click,
-                args=(idx,)
-            )
+st.title("🎯 משחק ניחוש מילים סמנטי")
 
-# --- הצגת התוצאה וניהול סוף המשחק ---
-st.write("---")
-if st.session_state.winner:
-    if st.session_state.winner == "Tie":
-        st.subheader("המשחק הסתיים בתיקו! 🤝")
-    else:
-        st.subheader(f"המנצח הוא {st.session_state.winner}! 🎉")
-        
-    # כפתור לאיפוס המשחק
-    if st.button("התחל משחק חדש", type="primary"):
-        st.session_state.board = [" "] * 9
-        st.session_state.current_player = "X"
-        st.session_state.winner = None
-        st.rerun()
-else:
-    st.subheader(f"תור השחקן: {st.session_state.current_player}")
+st.write("נסה לנחש את המילה שהמחשב בחר. כל ניחוש יקבל ציון קרבה סמנטית (0-100).")
+
+user_guess = st.text_input("הכנס ניחוש:")
+
+if st.button("נחש"):
+    if user_guess:
+        # חישוב אמבדינג
+        secret_embedding = model.encode([st.session_state.secret_word])
+        guess_embedding = model.encode([user_guess])
+
+        similarity = cosine_similarity(secret_embedding, guess_embedding)[0][0]
+        score = int(similarity * 100)
+
+        st.session_state.guesses.append((user_guess, score))
+
+        if user_guess == st.session_state.secret_word:
+            st.success(f"🎉 כל הכבוד! ניחשת נכון: {st.session_state.secret_word}")
+        else:
+            st.info(f"📊 רמת קרבה: {score}")
+
+# הצגת היסטוריית ניחושים
+if st.session_state.guesses:
+    st.subheader("📜 היסטוריית ניחושים")
+    for guess, score in sorted(st.session_state.guesses, key=lambda x: -x[1]):
+        st.write(f"{guess} - {score}")
+
+if st.button("🔄 משחק חדש"):
+    new_game()
+    st.experimental_rerun() 
