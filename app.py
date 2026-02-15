@@ -7,7 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 # טעינת מודל אמבדינג (תומך בעברית)
 @st.cache_resource
 def load_model():
-    return SentenceTransformer('imvladikon/sentence-transformers-alephbert')
+    return SentenceTransformer('dicta-il/dictabert-tiny')
 
 model = load_model()
 
