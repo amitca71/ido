@@ -1,24 +1,18 @@
-import tkinter as tk
+import streamlit as st
 import random
 
-# פונקציה שבוחרת "כן" או "לא" באקראי ומעדכנת את המסך
-def get_random_answer():
-    answers = ["כן", "לא"]
-    result = random.choice(answers)
-    label_result.config(text=result)
+# כותרת לאפליקציה
+st.title("מחולל 'כן' או 'לא' אקראי")
 
-# יצירת החלון הראשי
-root = tk.Tk()
-root.title("כן או לא?")
-root.geometry("300x200") # גודל החלון
+st.write("לחץ על הכפתור כדי לקבל החלטה:")
 
-# יצירת הכפתור
-button = tk.Button(root, text="לחץ לקבלת תשובה", command=get_random_answer, font=("Arial", 14))
-button.pack(pady=30) # מיקום הכפתור עם רווח למעלה ולמטה
-
-# יצירת אזור הטקסט (תווית) בו תופיע התשובה
-label_result = tk.Label(root, text="", font=("Arial", 28, "bold"))
-label_result.pack(pady=10)
-
-# הפעלת התוכנה והשארת החלון פתוח
-root.mainloop()
+# יצירת כפתור
+if st.button('לחץ כאן לתשובה'):
+    # בחירה אקראית
+    תשובה = random.choice(["כן", "לא"])
+    
+    # הצגת התשובה בעיצוב בולט
+    if תשובה == "כן":
+        st.success(f"התשובה היא: {תשובה} ✅")
+    else:
+        st.error(f"התשובה היא: {תשובה} ❌")
